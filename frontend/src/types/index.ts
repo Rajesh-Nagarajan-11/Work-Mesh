@@ -6,16 +6,27 @@ export interface Employee {
     phone?: string;
     department: string;
     role: string;
-    skills: EmployeeSkill[];
-    availability: EmployeeAvailability;
-    experience: number; // Years of experience
-    pastProjectScore?: number; // Average performance score from past projects (0-100)
+    // ER diagram fields
+    availability_status?: 'Available' | 'Partially Available' | 'Unavailable';
+    total_experience_years?: number;
+    communication_score?: number;
+    teamwork_score?: number;
+    performance_rating?: number;
+    error_rate?: number;
+    location?: string;
+    // Legacy fields (kept for backward compat)
+    availability?: EmployeeAvailability;
+    skills?: LegacyEmployeeSkill[];
+    experience?: number;
+    pastProjectScore?: number;
     photoUrl?: string;
+    accessRole?: 'Admin' | 'Manager' | 'Employee';
     createdAt: string;
     updatedAt: string;
 }
 
-export interface EmployeeSkill {
+// Legacy embedded employee skill (from old schema)
+export interface LegacyEmployeeSkill {
     id: string;
     skillId: string;
     skillName: string;
@@ -97,9 +108,101 @@ export interface SkillCoverage {
 // Skill types
 export interface Skill {
     id: string;
+    skill_name: string;
+    skill_category: string;
+    organizationId: string;
+    createdAt: string;
+    updatedAt: string;
+}
+
+// Employee-Skill types (EMPLOYEE_SKILLS join table)
+export interface EmployeeSkill {
+    id: string;
+    emp_id: string | Employee;
+    skill_id: string | Skill;
+    proficiency_level: number; // 1-5
+    years_experience: number;
+    last_used_year: number;
+    createdAt: string;
+    updatedAt: string;
+}
+
+// Allocation types (ALLOCATIONS table)
+export interface Allocation {
+    id: string;
+    emp_id: string | Employee;
+    project_id: string | Project;
+    allocation_start_date: string;
+    allocation_end_date: string | null;
+    allocation_percentage: number; // 1-100
+    createdAt: string;
+    updatedAt: string;
+}
+
+// Employee Project History types (EMPLOYEE_PROJECT_HISTORY)
+export interface EmployeeProjectHistory {
+    id: string;
+    emp_id: string | Employee;
+    project_id: string | Project;
+    role_in_project: string;
+    performance_feedback: number | null;
+    allocation_percentage: number;
+    domain_experience_year: number;
+    createdAt: string;
+    updatedAt: string;
+}
+
+
+// ML Team Formation types
+export interface TeamCandidateBreakdown {
+    skill_cosine_similarity: number;
+    availability: number;
+    performance_rating: number;
+    communication_score: number;
+    teamwork_score: number;
+    experience: number;
+    error_rate_score: number;
+    client_feedback: number;
+}
+
+export interface TeamCandidate {
+    rank: number;
+    id: string;
     name: string;
-    category: string;
-    description?: string;
+    role: string;
+    department: string;
+    availability_status: string;
+    total_experience_years: number;
+    seniority: 'junior' | 'mid' | 'senior';
+    projects_count: number;
+    avg_client_feedback: number | null;
+    final_score: number;
+    match_percentage: number;
+    recommended: boolean;
+    team_seniority_balance: number;
+    new_skills_contributed?: string[];
+    optimal_allocation_pct?: number;
+    current_project?: string;
+    matching_skills: string[];
+    skill_gap: {
+        missing_skills: string[];
+        weak_skills: string[];
+        gap_count: number;
+    };
+    score_breakdown: TeamCandidateBreakdown;
+}
+
+export interface TeamRecommendation {
+    team_size_requested: number;
+    total_candidates: number;
+    recommended_team: TeamCandidate[];
+    all_candidates: TeamCandidate[];
+    algorithm: string;
+    skill_coverage: Record<string, {
+        covered: boolean;
+        priority: string;
+        contributors: Array<{ name: string; proficiency: number }>;
+    }>;
 }
 
 // Analytics types

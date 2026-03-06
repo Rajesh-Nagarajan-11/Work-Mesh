@@ -11,6 +11,11 @@ const authRoutes = require('./routes/auth');
 const employeeRoutes = require('./routes/employees');
 const projectRoutes = require('./routes/projects');
 const projectRequestRoutes = require('./routes/projectRequests');
+const skillRoutes = require('./routes/skills');
+const employeeSkillRoutes = require('./routes/employeeSkills');
+const allocationRoutes = require('./routes/allocations');
+const historyRoutes = require('./routes/history');
+const analyticsRoutes = require('./routes/analytics');
 
 function createApp() {
   const app = express();
@@ -30,11 +35,19 @@ function createApp() {
     res.json({ success: true, data: { name: 'Work Mesh API' }, message: 'OK' });
   });
 
+  // Core routes
   app.use('/api/health', healthRoutes);
   app.use('/api/auth', authRoutes);
   app.use('/api/employees', employeeRoutes);
   app.use('/api/projects', projectRoutes);
   app.use('/api/project-requests', projectRequestRoutes);
+
+  // ER-diagram routes
+  app.use('/api/skills', skillRoutes);
+  app.use('/api/employees/:empId/skills', employeeSkillRoutes);
+  app.use('/api/allocations', allocationRoutes);
+  app.use('/api/history', historyRoutes);
+  app.use('/api/analytics', analyticsRoutes);
 
   app.use(notFound);
   app.use(errorHandler);

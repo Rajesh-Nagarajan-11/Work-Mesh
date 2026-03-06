@@ -57,7 +57,7 @@ export const Signup: React.FC = () => {
             const val = form.website.trim();
             try {
                 // Accept either full URL, or domain by adding https://
-                // eslint-disable-next-line no-new
+                 
                 new URL(val.startsWith('http://') || val.startsWith('https://') ? val : `https://${val}`);
             } catch {
                 next.website = 'Please enter a valid website URL';

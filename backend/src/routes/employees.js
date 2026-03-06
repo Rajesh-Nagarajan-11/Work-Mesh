@@ -6,6 +6,7 @@ const {
   create,
   update,
   remove,
+  getEmployeeHistory,
 } = require('../controllers/employeeController');
 
 const router = express.Router();
@@ -18,6 +19,9 @@ router.get('/', getAll);
 
 // GET /api/employees/:id - Get single employee
 router.get('/:id', getById);
+
+// GET /api/employees/:id/history - Get employee project history
+router.get('/:id/history', getEmployeeHistory);
 
 // POST /api/employees - Create employee (Admin/Manager only)
 router.post('/', requireRole('Admin', 'Manager'), create);

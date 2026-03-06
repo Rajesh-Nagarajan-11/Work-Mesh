@@ -4,6 +4,7 @@ import { Users, Plus, Search } from 'lucide-react';
 import { EmptyState } from '../components/ui/EmptyState';
 import { AddEmployeeModal } from '../components/employees/AddEmployeeModal';
 import { EditEmployeeModal } from '../components/employees/EditEmployeeModal';
+import { EmployeeHistoryModal } from '../components/employees/EmployeeHistoryModal';
 import { EmployeeList } from '../components/employees/EmployeeList';
 import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
@@ -16,7 +17,9 @@ export const Employees: React.FC = () => {
     const { addToast } = useToast();
     const [isAddModalOpen, setIsAddModalOpen] = useState(false);
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+    const [isHistoryModalOpen, setIsHistoryModalOpen] = useState(false);
     const [editingEmployee, setEditingEmployee] = useState<Employee | null>(null);
+    const [historyEmployee, setHistoryEmployee] = useState<Employee | null>(null);
     const [employees, setEmployees] = useState<Employee[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [searchQuery, setSearchQuery] = useState('');
@@ -59,6 +62,11 @@ export const Employees: React.FC = () => {
         setIsEditModalOpen(true);
     };
 
+    const handleHistoryEmployee = (employee: Employee) => {
+        setHistoryEmployee(employee);
+        setIsHistoryModalOpen(true);
+    };
+
     const handleDeleteEmployee = async (employee: Employee) => {
         if (!confirm(`Are you sure you want to delete ${employee.name}?`)) {
             return;
@@ -94,7 +102,7 @@ export const Employees: React.FC = () => {
             employee.role.toLowerCase().includes(searchQuery.toLowerCase());
 
         const matchesStatus =
-            filterStatus === 'all' || employee.availability?.status === filterStatus;
+            filterStatus === 'all' || employee.availability?.status === filterStatus || employee.availability_status === filterStatus;
 
         return matchesSearch && matchesStatus;
     });
@@ -170,6 +178,7 @@ export const Employees: React.FC = () => {
                         employees={filteredEmployees}
                         onEdit={handleEditEmployee}
                         onDelete={handleDeleteEmployee}
+                        onHistory={handleHistoryEmployee}
                     />
                 ) : employees.length === 0 ? (
                     <EmptyState
@@ -206,6 +215,16 @@ export const Employees: React.FC = () => {
                     setEditingEmployee(null);
                 }}
                 onSave={handleEmployeeUpdated}
+            />
+
+            {/* Employee History Modal */}
+            <EmployeeHistoryModal
+                isOpen={isHistoryModalOpen}
+                employee={historyEmployee}
+                onClose={() => {
+                    setIsHistoryModalOpen(false);
+                    setHistoryEmployee(null);
+                }}
             />
         </MainLayout>
     );

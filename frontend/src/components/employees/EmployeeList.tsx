@@ -7,12 +7,14 @@ interface EmployeeListProps {
     employees: Employee[];
     onEdit?: (employee: Employee) => void;
     onDelete?: (employee: Employee) => void;
+    onHistory?: (employee: Employee) => void;
 }
 
 export const EmployeeList: React.FC<EmployeeListProps> = ({
     employees,
     onEdit,
     onDelete,
+    onHistory,
 }) => {
     const getAvailabilityColor = (currentProject?: string) => {
         if (!currentProject) {
@@ -76,7 +78,7 @@ export const EmployeeList: React.FC<EmployeeListProps> = ({
                             {/* Experience and Score */}
                             <div className="flex flex-wrap gap-3 text-sm">
                                 <span className="px-3 py-1 rounded-full bg-primary-100 text-primary-800 dark:bg-primary-900/20 dark:text-primary-400 font-medium">
-                                    {employee.experience} years exp.
+                                    {employee.experience || employee.total_experience_years || 0} years exp.
                                 </span>
                                 {employee.pastProjectScore && (
                                     <span className="px-3 py-1 rounded-full bg-success-100 text-success-800 dark:bg-success-900/20 dark:text-success-400 font-medium flex items-center gap-1">
@@ -85,15 +87,15 @@ export const EmployeeList: React.FC<EmployeeListProps> = ({
                                     </span>
                                 )}
                                 <span
-                                    className={`px-3 py-1 rounded-full font-medium ${getAvailabilityColor(employee.availability.currentProject)}`}
+                                    className={`px-3 py-1 rounded-full font-medium ${getAvailabilityColor(employee.availability?.currentProject)}`}
                                 >
-                                    {employee.availability.currentProject ? `On: ${employee.availability.currentProject}` : 'Available'}
+                                    {employee.availability?.currentProject ? `On: ${employee.availability.currentProject}` : (employee.availability_status || employee.availability?.status || 'Available')}
                                 </span>
-                                {employee.availability.currentWorkload > 0 && (
+                                {employee.availability?.currentWorkload && employee.availability.currentWorkload > 0 ? (
                                     <span className="px-3 py-1 rounded-full bg-secondary-100 text-secondary-800 dark:bg-secondary-900/20 dark:text-secondary-400 font-medium">
                                         {employee.availability.currentWorkload}% workload
                                     </span>
-                                )}
+                                ) : null}
                             </div>
 
                             {/* Skills */}
@@ -119,6 +121,16 @@ export const EmployeeList: React.FC<EmployeeListProps> = ({
 
                         {/* Right Section - Actions */}
                         <div className="flex lg:flex-col gap-2">
+                            {onHistory && (
+                                <Button
+                                    variant="secondary"
+                                    size="sm"
+                                    onClick={() => onHistory(employee)}
+                                    leftIcon={<Briefcase className="w-4 h-4" />}
+                                >
+                                    History
+                                </Button>
+                            )}
                             {onEdit && (
                                 <Button
                                     variant="secondary"

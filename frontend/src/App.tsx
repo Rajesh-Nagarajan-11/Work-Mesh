@@ -12,6 +12,7 @@ import { Profile } from './pages/Profile';
 import { Settings } from './pages/Settings';
 import { ProjectDetails } from './pages/ProjectDetails';
 import { ProjectTeams } from './pages/ProjectTeams';
+import { DemandHirings } from './pages/DemandHirings';
 import { ClientProjectRequest } from './pages/ClientProjectRequest';
 
 function App() {
@@ -64,6 +65,14 @@ function App() {
                 element={
                   <ProtectedRoute>
                     <ProjectTeams />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/demand-hirings"
+                element={
+                  <ProtectedRoute>
+                    <DemandHirings />
                   </ProtectedRoute>
                 }
               />

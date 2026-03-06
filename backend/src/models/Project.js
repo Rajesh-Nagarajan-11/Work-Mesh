@@ -31,15 +31,24 @@ const ProjectSchema = new mongoose.Schema(
       required: true,
       index: true,
     },
-    name: { type: String, required: true, trim: true },
+    // ER: project_id (PK) - auto-generated _id
+    project_name: { type: String, trim: true, default: null }, // ER field alias
+    name: { type: String, required: true, trim: true }, // kept for compatibility
+    client_name: { type: String, default: null, trim: true },
+    domain: { type: String, default: null, trim: true },
     description: { type: String, default: '' },
+    start_date: { type: Date, default: null },
+    end_date: { type: Date, default: null },
+    deadline: { type: Date, required: true }, // kept for compatibility
+    project_budget: { type: Number, default: null, min: 0 },
+    // ER priority_level as INT (1=Low, 2=Medium, 3=High, 4=Critical, 5=Urgent)
+    priority_level: { type: Number, default: 2, min: 1, max: 5 },
     status: {
       type: String,
       enum: ['Draft', 'Active', 'Completed', 'Archived'],
       default: 'Draft',
     },
     priority: { type: String, enum: ['Low', 'Medium', 'High'], default: 'Medium' },
-    deadline: { type: Date, required: true },
     duration: { type: Number, default: 1 }, // months
     progress: { type: Number, default: 0, min: 0, max: 100 },
     requiredSkills: { type: [ProjectSkillSchema], default: [] },

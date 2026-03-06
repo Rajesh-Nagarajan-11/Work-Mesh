@@ -26,11 +26,19 @@ export const projectService = {
         await api.delete(`/projects/${id}`);
     },
 
-    async sendFormToClient(clientEmail: string, clientName?: string): Promise<{ formUrl: string; previewUrl?: string }> {
-        const response = await api.post<{ formUrl: string; previewUrl?: string }>('/project-requests/send', {
+    async sendFormToClient(clientEmail: string, clientName?: string): Promise<{ formUrl: string; previewUrl?: string; token?: string; clientEmail?: string }> {
+        const response = await api.post<{ token: string; formUrl: string; clientEmail: string; previewUrl?: string }>('/project-requests/send', {
             clientEmail,
             clientName: clientName || '',
         });
+        return response.data;
+    },
+
+    async recommendTeam(projectId: string, excludeUnavailable = false): Promise<import('../types').TeamRecommendation> {
+        const response = await api.get<import('../types').TeamRecommendation>(
+            `/projects/${projectId}/recommend-team`,
+            { params: { exclude_unavailable: excludeUnavailable } }
+        );
         return response.data;
     },
 };

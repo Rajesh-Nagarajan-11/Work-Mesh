@@ -1,19 +1,5 @@
 const mongoose = require('mongoose');
 
-const EmployeeSkillSchema = new mongoose.Schema(
-  {
-    skillId: { type: String, required: true },
-    skillName: { type: String, required: true },
-    yearsOfExperience: { type: Number, default: 0 },
-    proficiencyLevel: {
-      type: String,
-      enum: ['Beginner', 'Intermediate', 'Advanced', 'Expert'],
-      default: 'Beginner',
-    },
-  },
-  { _id: false }
-);
-
 const EmployeeAvailabilitySchema = new mongoose.Schema(
   {
     status: {
@@ -36,7 +22,9 @@ const EmployeeSchema = new mongoose.Schema(
       required: true,
       index: true,
     },
+    // ER: emp_id (PK) - auto-generated _id
     name: { type: String, required: true, trim: true },
+    role: { type: String, default: 'Employee', trim: true }, // Job title/role
     email: {
       type: String,
       required: true,
@@ -46,29 +34,32 @@ const EmployeeSchema = new mongoose.Schema(
     },
     phone: { type: String, default: null },
     department: { type: String, default: 'General' },
-    role: { type: String, default: 'Employee' }, // Job title/role
-    
+
+    // ER diagram fields
+    total_experience_years: { type: Number, default: 0, min: 0 },
+    communication_score: { type: Number, default: null, min: 0, max: 10 },
+    teamwork_score: { type: Number, default: null, min: 0, max: 10 },
+    performance_rating: { type: Number, default: null, min: 0, max: 10 },
+    error_rate: { type: Number, default: null, min: 0, max: 100 },
+    availability_status: {
+      type: String,
+      enum: ['Available', 'Partially Available', 'Unavailable'],
+      default: 'Available',
+    },
+    location: { type: String, default: null, trim: true },
+
     // Access control role (for login permissions)
     accessRole: {
       type: String,
       enum: ['Admin', 'Manager', 'Employee'],
       default: 'Employee',
     },
-    
+
     // Password hash - only set for employees who can login
     passwordHash: { type: String, default: null },
-    
-    skills: { type: [EmployeeSkillSchema], default: [] },
-    availability: {
-      type: EmployeeAvailabilitySchema,
-      default: () => ({
-        status: 'Available',
-        currentProject: null,
-        currentWorkload: 0,
-        availableFrom: null,
-      }),
-    },
-    experience: { type: Number, default: 0 }, // Years of experience
+
+    // Legacy embedded fields kept for backward compatibility
+    experience: { type: Number, default: 0 }, // alias for total_experience_years
     pastProjectScore: { type: Number, default: null, min: 0, max: 100 },
     photoUrl: { type: String, default: null },
   },

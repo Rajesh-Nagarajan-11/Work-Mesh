@@ -25,13 +25,13 @@ export const Login: React.FC = () => {
     const features = [
         {
             icon: <Users className="w-5 h-5" />,
-            title: 'Smart Team Matching',
-                description: 'Intelligent algorithms match skills to project requirements',
+            title: 'Competency-Driven Composition',
+            description: 'Multi-criteria optimisation engine matches proficiency vectors to project skill requirements with cosine similarity scoring',
         },
         {
             icon: <Zap className="w-5 h-5" />,
-            title: 'Rapid Deployment',
-            description: 'Form teams 10x faster than traditional methods',
+            title: 'Expedited Workforce Deployment',
+            description: 'Greedy set-cover algorithm synthesises optimal team configurations in seconds, eliminating weeks of manual deliberation',
         },
     ];
 
@@ -114,7 +114,7 @@ export const Login: React.FC = () => {
                     </h1>
 
                     <p className="text-xl text-primary-100 mb-12 max-w-lg">
-                        Intelligent team matching powered by AI. Build perfect teams in minutes, not weeks.
+                        Algorithmic team composition powered by machine learning. Build optimally balanced teams in minutes, not weeks.
                     </p>
 
                     {/* Features */}
@@ -139,7 +139,7 @@ export const Login: React.FC = () => {
                     </div>
 
                     {/* Social Proof */}
-                        {/* Social Proof section removed as requested */}
+                    {/* Social Proof section removed as requested */}
                 </div>
             </motion.div>
 

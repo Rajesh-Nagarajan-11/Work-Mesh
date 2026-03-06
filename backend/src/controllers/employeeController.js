@@ -175,4 +175,27 @@ async function remove(req, res) {
   return ok(res, { deleted: true }, 'Employee deleted');
 }
 
-module.exports = { getAll, getById, create, update, remove };
+/**
+ * Get an employee's project history
+ * GET /api/employees/:id/history
+ */
+async function getEmployeeHistory(req, res) {
+  const { organizationId } = req.user;
+  const { id } = req.params;
+
+  // First verify the employee exists and belongs to the org
+  const employee = await Employee.findOne({ _id: id, organizationId });
+  if (!employee) {
+    return fail(res, 404, 'Employee not found');
+  }
+
+  // Find history records associated with this employee
+  const EmployeeProjectHistory = require('../models/EmployeeProjectHistory');
+  const history = await EmployeeProjectHistory.find({ emp_id: id })
+    .populate('project_id', 'name status requiredSkills') // Get project details + skills
+    .sort({ createdAt: -1 });
+
+  return ok(res, history, 'Employee history fetched');
+}
+
+module.exports = { getAll, getById, create, update, remove, getEmployeeHistory };

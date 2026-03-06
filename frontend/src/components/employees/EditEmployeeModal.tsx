@@ -68,8 +68,8 @@ export const EditEmployeeModal: React.FC<EditEmployeeModalProps> = ({
             pastProjectScore: employee.pastProjectScore || 0,
         });
         setAvailability({
-            currentProject: employee.availability.currentProject,
-            currentWorkload: employee.availability.currentWorkload || 0,
+            currentProject: employee.availability?.currentProject,
+            currentWorkload: employee.availability?.currentWorkload || 0,
         });
         setSkills(
             (employee.skills || []).map((s) => ({
@@ -240,10 +240,10 @@ export const EditEmployeeModal: React.FC<EditEmployeeModalProps> = ({
                             label="Experience (Years)"
                             type="number"
                             min="0"
-                            value={formData.experience === 0 ? (formData.experience === '' ? '' : '0') : formData.experience}
+                            value={formData.experience}
                             onChange={(e) => {
                                 const val = e.target.value;
-                                handleChange('experience', val === '' ? '' : parseFloat(val));
+                                handleChange('experience', val === '' ? 0 : parseFloat(val));
                             }}
                             error={errors.experience}
                         />
@@ -252,10 +252,10 @@ export const EditEmployeeModal: React.FC<EditEmployeeModalProps> = ({
                             type="number"
                             min="0"
                             max="100"
-                            value={formData.pastProjectScore === 0 ? (formData.pastProjectScore === '' ? '' : '0') : formData.pastProjectScore}
+                            value={formData.pastProjectScore}
                             onChange={(e) => {
                                 const val = e.target.value;
-                                handleChange('pastProjectScore', val === '' ? '' : parseFloat(val));
+                                handleChange('pastProjectScore', val === '' ? 0 : parseFloat(val));
                             }}
                             error={errors.pastProjectScore}
                         />
@@ -362,7 +362,7 @@ export const EditEmployeeModal: React.FC<EditEmployeeModalProps> = ({
                                         <select
                                             value={skill.proficiencyLevel}
                                             onChange={(e) =>
-                                                updateSkill(index, 'proficiencyLevel', e.target.value)
+                                                updateSkill(index, 'proficiencyLevel', e.target.value as any)
                                             }
                                             className="w-full px-4 py-2 text-base border border-border rounded-md transition-all duration-150 focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary bg-white dark:bg-slate-800 dark:border-slate-700 dark:text-white"
                                         >

@@ -1,0 +1,51 @@
+🚀 Starting all services concurrently...
+Installing 'concurrently' globally...
+
+added 25 packages in 4s
+
+6 packages are looking for funding
+  run `npm fund` for details
+concurrently \
+	"make start-backend" \
+	"make start-frontend" \
+	"make start-ml" \
+	--names "BACKEND,FRONTEND,PYTHON-ML" \
+	--prefix-colors "blue,green,magenta"
+[BACKEND] make[1]: Entering directory '/home/rajesh-nagarajan/Work-Mesh'
+[BACKEND] 🚀 Starting Backend on Port 5000...
+[BACKEND] cd backend && npm run dev
+[FRONTEND] make[1]: Entering directory '/home/rajesh-nagarajan/Work-Mesh'
+[FRONTEND] 🚀 Starting Frontend on Port 3000...
+[FRONTEND] cd frontend && npm start
+[PYTHON-ML] make[1]: Entering directory '/home/rajesh-nagarajan/Work-Mesh'
+[PYTHON-ML] 🚀 Starting Python ML Engine on Port 8000...
+[PYTHON-ML] cd "Python ML" && . .venv/bin/activate && uvicorn main:app --reload --host 0.0.0.0 --port 8000
+[BACKEND] 
+[BACKEND] > work-mesh-backend@0.1.0 dev
+[BACKEND] > nodemon src/server.js
+[BACKEND] 
+[PYTHON-ML] INFO:     Will watch for changes in these directories: ['/home/rajesh-nagarajan/Work-Mesh/Python ML']
+[PYTHON-ML] INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
+[PYTHON-ML] INFO:     Started reloader process [11592] using StatReload
+[FRONTEND] npm error Missing script: "start"
+[FRONTEND] npm error
+[FRONTEND] npm error Did you mean one of these?
+[FRONTEND] npm error   npm star # Mark your favorite packages
+[FRONTEND] npm error   npm stars # View packages marked as favorites
+[FRONTEND] npm error
+[FRONTEND] npm error To see a list of scripts, run:
+[FRONTEND] npm error   npm run
+[FRONTEND] npm error A complete log of this run can be found in: /home/rajesh-nagarajan/.npm/_logs/2026-03-05T08_47_47_513Z-debug-0.log
+[FRONTEND] make[1]: *** [Makefile:41: start-frontend] Error 1
+[FRONTEND] make[1]: Leaving directory '/home/rajesh-nagarajan/Work-Mesh'
+[FRONTEND] make start-frontend exited with code 2
+[BACKEND] [33m[nodemon] 3.1.11[39m
+[BACKEND] [33m[nodemon] to restart at any time, enter `rs`[39m
+[BACKEND] [33m[nodemon] watching path(s): *.*[39m
+[BACKEND] [33m[nodemon] watching extensions: js,mjs,cjs,json[39m
+[BACKEND] [32m[nodemon] starting `node src/server.js`[39m
+[BACKEND] Connected to MongoDB
+[BACKEND] Backend listening on http://localhost:5000
+[PYTHON-ML] INFO:     Started server process [11616]
+[PYTHON-ML] INFO:     Waiting for application startup.
+[PYTHON-ML] INFO:     Application startup complete.

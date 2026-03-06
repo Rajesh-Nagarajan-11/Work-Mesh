@@ -16,6 +16,7 @@ export const Navbar: React.FC = () => {
         { label: 'Dashboard', path: '/dashboard' },
         { label: 'Employees', path: '/employees' },
         { label: 'Projects', path: '/projects' },
+        { label: 'Demand Hirings', path: '/demand-hirings' },
     ];
 
     const handleLogout = async () => {

@@ -109,6 +109,7 @@ export const Projects: React.FC = () => {
         deadline: '',
         duration: 3,
         teamSize: 5,
+        progress: 0,
     });
     const [editSkills, setEditSkills] = useState<CreateSkillInput[]>([]);
     const [isSavingEdit, setIsSavingEdit] = useState(false);
@@ -119,6 +120,7 @@ export const Projects: React.FC = () => {
     const [isSendingForm, setIsSendingForm] = useState(false);
     const [formUrl, setFormUrl] = useState<string | null>(null);
 
+    // Fetch from real backend API
     const fetchProjects = useCallback(async () => {
         try {
             setIsLoading(true);
@@ -237,6 +239,7 @@ export const Projects: React.FC = () => {
             deadline: deadlineToInputValue(p.deadline),
             duration: typeof p.duration === 'number' ? p.duration : 3,
             teamSize: p.teamPreferences?.teamSize ?? 5,
+            progress: typeof p.progress === 'number' ? p.progress : 0,
         });
         setEditSkills(
             (p.requiredSkills || []).map((s) => ({
@@ -291,8 +294,7 @@ export const Projects: React.FC = () => {
                 priority: editForm.priority,
                 deadline,
                 status: editForm.status,
-                progress:
-                    editForm.status === 'Completed' ? 100 : editForm.status === 'Active' ? (typeof editingProject.progress === 'number' ? editingProject.progress : 20) : editingProject.progress ?? 0,
+                progress: editForm.status === 'Completed' ? 100 : editForm.progress,
                 requiredSkills: editSkills
                     .filter((s) => s.skillName.trim())
                     .map((s) => ({
@@ -367,12 +369,23 @@ export const Projects: React.FC = () => {
         setIsSendingForm(true);
         setFormUrl(null);
         try {
-            const { formUrl: url } = await projectService.sendFormToClient(sendFormEmail.trim(), sendFormName.trim() || undefined);
-            setFormUrl(url);
-            await navigator.clipboard.writeText(url);
-            addToast('success', 'Form link copied to clipboard. Email sent to client.');
+            const result = await projectService.sendFormToClient(sendFormEmail.trim(), sendFormName.trim() || undefined);
+            console.log('Send form result:', result);
+            if (result && result.formUrl) {
+                setFormUrl(result.formUrl);
+                try {
+                    await navigator.clipboard.writeText(result.formUrl);
+                    addToast('success', 'Form link copied to clipboard. Email sent to client.');
+                } catch (clipErr) {
+                    // Clipboard failed but form was sent
+                    addToast('success', 'Email sent to client. Form link: ' + result.formUrl);
+                }
+            } else {
+                throw new Error('No form URL in response');
+            }
         } catch (err) {
-            addToast('error', 'Failed to send form');
+            console.error('Send form error:', err);
+            addToast('error', 'Failed to send form: ' + (err instanceof Error ? err.message : 'Unknown error'));
         } finally {
             setIsSendingForm(false);
         }
@@ -413,8 +426,8 @@ export const Projects: React.FC = () => {
                                 type="button"
                                 onClick={() => setView('board')}
                                 className={`px-3 py-2 text-sm font-medium flex items-center gap-2 ${view === 'board'
-                                        ? 'bg-primary text-white'
-                                        : 'bg-white dark:bg-slate-800 text-secondary-700 dark:text-secondary-200 hover:bg-secondary-50 dark:hover:bg-slate-700'
+                                    ? 'bg-primary text-white'
+                                    : 'bg-white dark:bg-slate-800 text-secondary-700 dark:text-secondary-200 hover:bg-secondary-50 dark:hover:bg-slate-700'
                                     }`}
                                 aria-pressed={view === 'board'}
                             >
@@ -425,8 +438,8 @@ export const Projects: React.FC = () => {
                                 type="button"
                                 onClick={() => setView('list')}
                                 className={`px-3 py-2 text-sm font-medium flex items-center gap-2 border-l border-border dark:border-slate-700 ${view === 'list'
-                                        ? 'bg-primary text-white'
-                                        : 'bg-white dark:bg-slate-800 text-secondary-700 dark:text-secondary-200 hover:bg-secondary-50 dark:hover:bg-slate-700'
+                                    ? 'bg-primary text-white'
+                                    : 'bg-white dark:bg-slate-800 text-secondary-700 dark:text-secondary-200 hover:bg-secondary-50 dark:hover:bg-slate-700'
                                     }`}
                                 aria-pressed={view === 'list'}
                             >
@@ -540,30 +553,24 @@ export const Projects: React.FC = () => {
                         }}
                     />
                 ) : view === 'board' ? (
-                    <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-4 gap-4">
-                        {STATUS_COLUMNS.map((status) => (
-                            <div
-                                key={status}
-                                className="bg-surface dark:bg-slate-900 rounded-lg border border-border dark:border-slate-700 p-3"
-                            >
-                                <div className="flex items-center justify-between mb-3">
-                                    <div className="flex items-center gap-2">
-                                        <span className={`text-sm font-semibold ${getStatusHeader(status)}`}>
-                                            {status}
-                                        </span>
-                                        <span className="text-xs px-2 py-0.5 rounded-full bg-secondary-100 dark:bg-slate-800 text-secondary-700 dark:text-secondary-300">
-                                            {groupedByStatus[status].length}
-                                        </span>
-                                    </div>
+                    <div className="space-y-8">
+                        {STATUS_COLUMNS.filter(s => groupedByStatus[s].length > 0).map((status) => (
+                            <div key={status} className="space-y-4">
+                                <div className="flex items-center gap-2 border-b border-border dark:border-slate-700 pb-2">
+                                    <span className={`text-lg font-bold ${getStatusHeader(status)}`}>
+                                        {status} Projects
+                                    </span>
+                                    <span className="text-sm px-2.5 py-0.5 rounded-full bg-secondary-100 dark:bg-slate-800 text-secondary-700 dark:text-secondary-300 font-medium">
+                                        {groupedByStatus[status].length}
+                                    </span>
                                 </div>
-
-                                <div className="space-y-3">
+                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
                                     {groupedByStatus[status].map((p) => (
                                         <div
                                             key={p.id}
-                                            className="bg-white dark:bg-slate-800 rounded-lg border border-border dark:border-slate-700 p-4 hover:shadow-md transition-shadow"
+                                            className="bg-white dark:bg-slate-800 rounded-lg border border-border dark:border-slate-700 p-4 hover:shadow-md transition-shadow flex flex-col h-full"
                                         >
-                                            <div className="flex items-start justify-between gap-3">
+                                            <div className="flex justify-between items-start gap-3 mb-3">
                                                 <div className="min-w-0">
                                                     <p className="text-sm font-semibold text-secondary-900 dark:text-white truncate">
                                                         {p.name}
@@ -575,13 +582,13 @@ export const Projects: React.FC = () => {
                                                 <span
                                                     className={`px-2 py-1 rounded-full text-xs font-medium ${getPriorityBadge(
                                                         p.priority
-                                                    )}`}
+                                                    )} shrink-0`}
                                                 >
                                                     {p.priority}
                                                 </span>
                                             </div>
 
-                                            <div className="mt-3 space-y-2">
+                                            <div className="space-y-3 flex-grow">
                                                 <div className="flex items-center justify-between text-xs text-secondary-600 dark:text-secondary-400">
                                                     <span className="flex items-center gap-1">
                                                         <Calendar className="w-3.5 h-3.5" />
@@ -612,7 +619,7 @@ export const Projects: React.FC = () => {
                                                     <div className="flex flex-wrap gap-1.5 pt-1">
                                                         {p.requiredSkills.slice(0, 4).map((s) => (
                                                             <span
-                                                                key={s.id}
+                                                                key={s.id || s.skillId || s.skillName}
                                                                 className="px-2 py-0.5 rounded-md text-[11px] font-medium bg-primary-100 text-primary-800 dark:bg-primary-900/20 dark:text-primary-300"
                                                             >
                                                                 {s.skillName}
@@ -627,7 +634,7 @@ export const Projects: React.FC = () => {
                                                 )}
                                             </div>
 
-                                            <div className="mt-4 flex items-center justify-end gap-2 flex-wrap">
+                                            <div className="mt-4 pt-3 border-t border-border dark:border-slate-700 flex items-center justify-end gap-2 flex-wrap">
                                                 {canEditProject(p) && (
                                                     <Button size="sm" variant="secondary" onClick={() => openEdit(p)} leftIcon={<Edit className="w-3.5 h-3.5" />}>
                                                         Edit
@@ -992,6 +999,25 @@ export const Projects: React.FC = () => {
                                 ))}
                             </select>
                         </div>
+                        {editForm.status === 'Active' && (
+                            <div className="md:col-span-2">
+                                <div className="flex justify-between items-center mb-1">
+                                    <label className="block text-sm font-medium text-secondary-700 dark:text-secondary-300">
+                                        Project Progress
+                                    </label>
+                                    <span className="text-sm font-bold text-primary">{editForm.progress}%</span>
+                                </div>
+                                <input
+                                    type="range"
+                                    min="0"
+                                    max="100"
+                                    step="5"
+                                    value={editForm.progress}
+                                    onChange={(e) => setEditForm(prev => ({ ...prev, progress: parseInt(e.target.value, 10) || 0 }))}
+                                    className="w-full h-2 bg-secondary-200 rounded-lg appearance-none cursor-pointer dark:bg-slate-700 accent-primary"
+                                />
+                            </div>
+                        )}
                         <Input
                             label="Duration (months)"
                             type="number"

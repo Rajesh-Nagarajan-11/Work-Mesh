@@ -1,12 +1,27 @@
 import type { KPI, ChartData } from '../types';
 import { api } from '../lib/axios';
 
-interface AnalyticsData {
+export interface UpcomingDeadline {
+    id: string;
+    projectName: string;
+    dueDate: string;
+    daysRemaining: number;
+    status: 'critical' | 'warning' | 'upcoming';
+}
+
+export interface AnalyticsData {
     kpis: KPI[];
     projectsOverTime: ChartData[];
     skillDemand: ChartData[];
-    teamSizeDistribution: ChartData[];
-    departmentAllocation: ChartData[];
+    upcomingDeadlines: UpcomingDeadline[];
+    summary: {
+        totalEmployees: number;
+        activeProjects: number;
+        completedProjects: number;
+        activeAllocations: number;
+        avgPerformance: number;
+        utilization: number;
+    };
 }
 
 export const analyticsService = {
@@ -15,7 +30,6 @@ export const analyticsService = {
             ...(startDate && { startDate }),
             ...(endDate && { endDate }),
         });
-
         const response = await api.get<AnalyticsData>(`/analytics?${params}`);
         return response.data;
     },
@@ -26,11 +40,10 @@ export const analyticsService = {
             ...(startDate && { startDate }),
             ...(endDate && { endDate }),
         });
-
         const response = await api.get(`/reports/export?${params}`, {
             responseType: 'blob',
         });
-
         return response.data as unknown as Blob;
     },
 };
+

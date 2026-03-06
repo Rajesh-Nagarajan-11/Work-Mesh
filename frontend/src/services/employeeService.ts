@@ -40,4 +40,12 @@ export const employeeService = {
     async deleteEmployee(id: string): Promise<void> {
         await api.delete(`/employees/${id}`);
     },
+
+    /**
+     * Get an employee's project history
+     */
+    async getEmployeeHistory(id: string): Promise<any[]> {
+        const response = await api.get(`/employees/${id}/history`);
+        return response.data;
+    },
 };
