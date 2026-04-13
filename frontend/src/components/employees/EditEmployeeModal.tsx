@@ -3,8 +3,9 @@ import { Modal } from '../ui/Modal';
 import { Input } from '../ui/Input';
 import { Button } from '../ui/Button';
 import { Briefcase, Building2, Mail, Phone, Plus, X } from 'lucide-react';
-import type { Employee, EmployeeFormData } from '../../types';
+import type { Employee, EmployeeFormData, Skill } from '../../types';
 import { useToast } from '../ui/Toast';
+import { skillService } from '../../services/skillService';
 
 interface EditEmployeeModalProps {
     isOpen: boolean;
@@ -60,6 +61,8 @@ export const EditEmployeeModal: React.FC<EditEmployeeModalProps> = ({
     }>({ currentProject: undefined, currentWorkload: 0, availableFrom: undefined });
 
     const [skills, setSkills] = useState<SkillInput[]>([]);
+    const [availableSkills, setAvailableSkills] = useState<Skill[]>([]);
+    const [isLoadingSkills, setIsLoadingSkills] = useState(false);
 
     useEffect(() => {
         if (!employee) return;
@@ -101,6 +104,25 @@ export const EditEmployeeModal: React.FC<EditEmployeeModalProps> = ({
             }))
         );
     }, [employee, isOpen]);
+
+    useEffect(() => {
+        if (!isOpen) return;
+        
+        const fetchSkills = async () => {
+            setIsLoadingSkills(true);
+            try {
+                const skills = await skillService.getSkills();
+                setAvailableSkills(skills);
+            } catch (error) {
+                console.error('Failed to fetch skills:', error);
+                addToast('error', 'Failed to load skills');
+            } finally {
+                setIsLoadingSkills(false);
+            }
+        };
+
+        fetchSkills();
+    }, [isOpen, addToast]);
 
     const title = useMemo(() => (employee ? `Edit Employee — ${employee.name}` : 'Edit Employee'), [employee]);
 
@@ -224,6 +246,7 @@ export const EditEmployeeModal: React.FC<EditEmployeeModalProps> = ({
 
             const updated: Employee = {
                 ...employee,
+                id: employee.id, // Ensure the id is always present
                 name: employeeData.name,
                 email: employeeData.email,
                 phone: employeeData.phone,
@@ -497,11 +520,27 @@ export const EditEmployeeModal: React.FC<EditEmployeeModalProps> = ({
                                         <label className="block text-sm font-medium text-secondary-700 dark:text-secondary-300 mb-1">
                                             Skill Name
                                         </label>
-                                        <Input
-                                            placeholder="e.g., React, Python, AWS"
-                                            value={skill.skillName}
-                                            onChange={(e) => updateSkill(index, 'skillName', e.target.value)}
-                                        />
+                                        <select
+                                            value={skill.skillId}
+                                            onChange={(e) => {
+                                                const selectedSkill = availableSkills.find(s => s.id === e.target.value);
+                                                if (selectedSkill) {
+                                                    updateSkill(index, 'skillId', selectedSkill.id);
+                                                    updateSkill(index, 'skillName', selectedSkill.skill_name);
+                                                }
+                                            }}
+                                            disabled={isLoadingSkills}
+                                            className="w-full px-4 py-2 text-base border border-border rounded-md transition-all duration-150 focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary bg-white dark:bg-slate-800 dark:border-slate-700 dark:text-white disabled:opacity-50"
+                                        >
+                                            <option value="">
+                                                {isLoadingSkills ? 'Loading skills...' : 'Select a skill'}
+                                            </option>
+                                            {availableSkills.map((s) => (
+                                                <option key={s.id} value={s.id}>
+                                                    {s.skill_name}
+                                                </option>
+                                            ))}
+                                        </select>
                                     </div>
                                     <div className="col-span-6 md:col-span-3">
                                         <label className="block text-sm font-medium text-secondary-700 dark:text-secondary-300 mb-1">

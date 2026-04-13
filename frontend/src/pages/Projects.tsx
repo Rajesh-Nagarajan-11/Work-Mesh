@@ -1,17 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import {
-    Briefcase,
-    Calendar,
-    Edit,
-    Flag,
-    LayoutGrid,
-    List,
-    Mail,
-    Plus,
-    Search,
-    X,
-    Users,
-} from 'lucide-react';
+import { Briefcase, Calendar, Edit, Flag, LayoutGrid, List, Mail, Plus, Search, X, Users } from 'lucide-react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { MainLayout } from '../components/layout/MainLayout';
 import { Button } from '../components/ui/Button';
@@ -119,6 +107,7 @@ export const Projects: React.FC = () => {
     const [sendFormName, setSendFormName] = useState('');
     const [isSendingForm, setIsSendingForm] = useState(false);
     const [formUrl, setFormUrl] = useState<string | null>(null);
+    const [deletingProjectId, setDeletingProjectId] = useState<string | null>(null);
 
     // Fetch from real backend API
     const fetchProjects = useCallback(async () => {
@@ -396,6 +385,20 @@ export const Projects: React.FC = () => {
         setSendFormEmail('');
         setSendFormName('');
         setFormUrl(null);
+    };
+
+    const handleDeleteProject = async (project: Project) => {
+        if (!window.confirm(`Delete project "${project.name}"? This action cannot be undone.`)) return;
+        setDeletingProjectId(project.id);
+        try {
+            await projectService.deleteProject(project.id);
+            setProjects((prev) => prev.filter((p) => p.id !== project.id));
+            addToast('success', 'Project deleted');
+        } catch (err) {
+            addToast('error', 'Failed to delete project');
+        } finally {
+            setDeletingProjectId(null);
+        }
     };
 
     if (isLoading) {
@@ -948,13 +951,23 @@ export const Projects: React.FC = () => {
                 title={editingProject ? `Edit Project — ${editingProject.name}` : 'Edit Project'}
                 size="lg"
                 footer={
-                    <div className="flex justify-end gap-3">
-                        <Button variant="secondary" onClick={closeEdit} disabled={isSavingEdit}>
+                    <div className="flex items-center justify-between gap-3">
+                        <Button
+                            variant="danger"
+                            onClick={() => editingProject && handleDeleteProject(editingProject)}
+                            isLoading={!!editingProject && deletingProjectId === editingProject.id}
+                            disabled={!editingProject}
+                        >
+                            Delete Project
+                        </Button>
+                        <div className="flex items-center gap-3">
+                            <Button variant="secondary" onClick={closeEdit} disabled={isSavingEdit}>
                             Cancel
-                        </Button>
-                        <Button onClick={handleUpdateProject} disabled={!editForm.name.trim() || isSavingEdit} isLoading={isSavingEdit}>
-                            Save
-                        </Button>
+                            </Button>
+                            <Button onClick={handleUpdateProject} disabled={!editForm.name.trim() || isSavingEdit} isLoading={isSavingEdit}>
+                                Save
+                            </Button>
+                        </div>
                     </div>
                 }
             >

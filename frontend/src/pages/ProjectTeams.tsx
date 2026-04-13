@@ -118,7 +118,7 @@ const MLLoadingOverlay: React.FC<{ step: number; progress: number }> = ({
           ALGORITHMIC ANALYSIS ENGINE
         </h3>
         <p className="text-xs text-primary-600 dark:text-primary-400 font-mono">
-          Marginal Utility Maximisation · Cosine Similarity · Greedy Set Cover
+           Cosine Similarity · Greedy Set Cover
         </p>
       </div>
       <div className="ml-auto text-right">
@@ -677,19 +677,21 @@ export const ProjectTeams: React.FC = () => {
             </p>
           </div>
           <div className="card p-4 text-center">
-            <p className="text-2xl font-bold text-primary-600">
-              {allocations.length > 0
+            <p className="text-2xl font-bold text-emerald-600 dark:text-emerald-400">
+              {project.requiredSkills?.length > 0
                 ? Math.round(
-                    allocations.reduce(
-                      (s, a) => s + (a.allocation_percentage ?? 0),
-                      0,
-                    ) / allocations.length,
+                    (project.requiredSkills.filter((reqSkill) =>
+                      allocations.some((alloc) => {
+                        const empId = typeof alloc.emp_id === "string" ? alloc.emp_id : (alloc.emp_id as Employee).id;
+                        const employee = employees.find(e => e.id === empId);
+                        return employee?.skills?.some(s => s.skillId === reqSkill.skillId) || false;
+                      })
+                    ).length / project.requiredSkills.length) * 100
                   )
-                : 0}
-              %
+                : 100}%
             </p>
             <p className="text-xs text-secondary-500 dark:text-secondary-400 mt-1">
-              Avg Allocation
+              Required Skills Covered
             </p>
           </div>
         </div>

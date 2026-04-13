@@ -1,6 +1,21 @@
 const bcrypt = require('bcryptjs');
 const Employee = require('../models/Employee');
+const EmployeeSkill = require('../models/EmployeeSkill');
 const { ok, fail } = require('../utils/apiResponse');
+
+const getProficiencyString = (level) => {
+  if (level >= 5) return 'Expert';
+  if (level >= 4) return 'Advanced';
+  if (level >= 3) return 'Intermediate';
+  return 'Beginner';
+};
+
+const getProficiencyNumber = (str) => {
+  if (str === 'Expert') return 5;
+  if (str === 'Advanced') return 4;
+  if (str === 'Intermediate') return 3;
+  return 1;
+};
 
 /**
  * Get all employees in the organization
@@ -40,10 +55,23 @@ async function getAll(req, res) {
         availability.status = 'Unavailable';
       }
 
+      // Fetch skills
+      const employeeSkills = await EmployeeSkill.find({ emp_id: emp._id }).populate('skill_id', 'skill_name');
+      const mappedSkills = employeeSkills
+        .filter(es => es.skill_id) // ensure skill still exists
+        .map(es => ({
+          id: es._id.toHexString(),
+          skillId: es.skill_id._id.toHexString(),
+          skillName: es.skill_id.skill_name,
+          yearsOfExperience: es.years_experience,
+          proficiencyLevel: getProficiencyString(es.proficiency_level),
+        }));
+
       // Attach availability to employee object (frontend expects this)
       return {
-        ...emp.toObject(),
+        ...emp.toJSON(),
         availability,
+        skills: mappedSkills,
       };
     })
   );
@@ -65,7 +93,18 @@ async function getById(req, res) {
     return fail(res, 404, 'Employee not found');
   }
 
-  return ok(res, employee, 'Employee fetched');
+  const employeeSkills = await EmployeeSkill.find({ emp_id: employee._id }).populate('skill_id', 'skill_name');
+  const mappedSkills = employeeSkills
+    .filter(es => es.skill_id)
+    .map(es => ({
+      id: es._id.toHexString(),
+      skillId: es.skill_id._id.toHexString(),
+      skillName: es.skill_id.skill_name,
+      yearsOfExperience: es.years_experience,
+      proficiencyLevel: getProficiencyString(es.proficiency_level),
+    }));
+
+  return ok(res, { ...employee.toJSON(), skills: mappedSkills }, 'Employee fetched');
 }
 
 /**
@@ -154,6 +193,41 @@ async function create(req, res) {
     photoUrl: photoUrl || null,
   });
 
+  const Skill = require('../models/Skill');
+  if (skills && Array.isArray(skills)) {
+    const skillDocs = [];
+    for (const s of skills) {
+      if (!s.skillName) continue;
+      
+      let skillNameTrimmed = String(s.skillName).trim();
+      let dbSkill = await Skill.findOne({
+        organizationId,
+        skill_name: { $regex: new RegExp(`^${skillNameTrimmed}$`, 'i') }
+      });
+      
+      if (!dbSkill) {
+        dbSkill = await Skill.create({
+          organizationId,
+          skill_name: skillNameTrimmed,
+          skill_category: 'General'
+        });
+      }
+      
+      skillDocs.push({
+        emp_id: employee._id,
+        skill_id: dbSkill._id,
+        proficiency_level: getProficiencyNumber(s.proficiencyLevel),
+        years_experience: s.yearsOfExperience || 0,
+        last_used_year: new Date().getFullYear(),
+      });
+    }
+
+    if (skillDocs.length > 0) {
+      await EmployeeSkill.insertMany(skillDocs);
+    }
+  }
+
+  // Fetch created employee to return with fully populated skills format if needed, but the frontend usually hits GET again
   return ok(res, employee, 'Employee created');
 }
 
@@ -206,6 +280,44 @@ async function update(req, res) {
     if (existing) {
       return fail(res, 409, 'An employee with this email already exists');
     }
+  }
+
+  const Skill = require('../models/Skill');
+  if (updates.skills && Array.isArray(updates.skills)) {
+    await EmployeeSkill.deleteMany({ emp_id: employee._id });
+    
+    // Process skills sequentially to ensure we get/create correct skill records
+    const skillDocs = [];
+    for (const s of updates.skills) {
+      if (!s.skillName) continue; // Safety check
+      
+      let skillNameTrimmed = String(s.skillName).trim();
+      let dbSkill = await Skill.findOne({
+        organizationId: employee.organizationId,
+        skill_name: { $regex: new RegExp(`^${skillNameTrimmed}$`, 'i') }
+      });
+      
+      if (!dbSkill) {
+        dbSkill = await Skill.create({
+          organizationId: employee.organizationId,
+          skill_name: skillNameTrimmed,
+          skill_category: 'General'
+        });
+      }
+      
+      skillDocs.push({
+        emp_id: employee._id,
+        skill_id: dbSkill._id,
+        proficiency_level: getProficiencyNumber(s.proficiencyLevel),
+        years_experience: s.yearsOfExperience || 0,
+        last_used_year: new Date().getFullYear(),
+      });
+    }
+
+    if (skillDocs.length > 0) {
+      await EmployeeSkill.insertMany(skillDocs);
+    }
+    delete updates.skills;
   }
 
   Object.assign(employee, updates);

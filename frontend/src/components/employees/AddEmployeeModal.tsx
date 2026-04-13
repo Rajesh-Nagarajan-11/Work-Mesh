@@ -1,10 +1,11 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Modal } from '../ui/Modal';
 import { Input } from '../ui/Input';
 import { Button } from '../ui/Button';
 import { Mail, Phone, Briefcase, Building2, Plus, X } from 'lucide-react';
-import type { Employee, EmployeeFormData } from '../../types';
+import type { Employee, EmployeeFormData, Skill } from '../../types';
 import { employeeService } from '../../services/employeeService';
+import { skillService } from '../../services/skillService';
 import { useToast } from '../ui/Toast';
 
 interface AddEmployeeModalProps {
@@ -58,6 +59,8 @@ export const AddEmployeeModal: React.FC<AddEmployeeModalProps> = ({
 
     const [skills, setSkills] = useState<SkillInput[]>([]);
     const [errors, setErrors] = useState<Record<string, string>>({});
+    const [availableSkills, setAvailableSkills] = useState<Skill[]>([]);
+    const [isLoadingSkills, setIsLoadingSkills] = useState(false);
 
     // Handle input changes
     const handleChange = (field: string, value: string | number) => {
@@ -120,6 +123,25 @@ export const AddEmployeeModal: React.FC<AddEmployeeModalProps> = ({
         setErrors(newErrors);
         return Object.keys(newErrors).length === 0;
     };
+
+    useEffect(() => {
+        if (!isOpen) return;
+        
+        const fetchSkills = async () => {
+            setIsLoadingSkills(true);
+            try {
+                const skills = await skillService.getSkills();
+                setAvailableSkills(skills);
+            } catch (error) {
+                console.error('Failed to fetch skills:', error);
+                addToast('error', 'Failed to load skills');
+            } finally {
+                setIsLoadingSkills(false);
+            }
+        };
+
+        fetchSkills();
+    }, [isOpen, addToast]);
 
     // Handle submit
     const handleSubmit = async (e: React.FormEvent) => {
@@ -454,13 +476,27 @@ export const AddEmployeeModal: React.FC<AddEmployeeModalProps> = ({
                                         <label className="block text-sm font-medium text-secondary-700 dark:text-secondary-300 mb-1">
                                             Skill Name
                                         </label>
-                                        <Input
-                                            placeholder="e.g., React, Python, AWS"
-                                            value={skill.skillName}
-                                            onChange={(e) =>
-                                                updateSkill(index, 'skillName', e.target.value)
-                                            }
-                                        />
+                                        <select
+                                            value={skill.skillId}
+                                            onChange={(e) => {
+                                                const selectedSkill = availableSkills.find(s => s.id === e.target.value);
+                                                if (selectedSkill) {
+                                                    updateSkill(index, 'skillId', selectedSkill.id);
+                                                    updateSkill(index, 'skillName', selectedSkill.skill_name);
+                                                }
+                                            }}
+                                            disabled={isLoadingSkills}
+                                            className="w-full px-4 py-2 text-base border border-border rounded-md transition-all duration-150 focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary bg-white dark:bg-slate-800 dark:border-slate-700 dark:text-white disabled:opacity-50"
+                                        >
+                                            <option value="">
+                                                {isLoadingSkills ? 'Loading skills...' : 'Select a skill'}
+                                            </option>
+                                            {availableSkills.map((s) => (
+                                                <option key={s.id} value={s.id}>
+                                                    {s.skill_name}
+                                                </option>
+                                            ))}
+                                        </select>
                                     </div>
                                     <div className="col-span-6 md:col-span-3">
                                         <label className="block text-sm font-medium text-secondary-700 dark:text-secondary-300 mb-1">

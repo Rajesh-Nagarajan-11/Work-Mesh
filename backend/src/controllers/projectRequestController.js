@@ -1,38 +1,10 @@
-const nodemailer = require('nodemailer');
 const Project = require('../models/Project');
 const ProjectRequest = require('../models/ProjectRequest');
 const Organization = require('../models/Organization');
 const { ok, fail } = require('../utils/apiResponse');
+const { sendEmail } = require('../utils/mailer');
 
 const FRONTEND_BASE = process.env.FRONTEND_BASE_URL || 'http://localhost:3000';
-
-async function getTransporter() {
-  if (process.env.SMTP_HOST) {
-    const host = process.env.SMTP_HOST;
-    const port = parseInt(process.env.SMTP_PORT || '587', 10);
-    const secure = process.env.SMTP_SECURE === 'true';
-    // If your network/DNS resolves smtp.gmail.com to a wrong IP (e.g. 192.178.x.x), set SMTP_HOST to a Google IP like 64.233.180.109 to bypass DNS
-    return nodemailer.createTransport({
-      host,
-      port,
-      secure,
-      auth: process.env.SMTP_USER
-        ? {
-            user: process.env.SMTP_USER,
-            pass: process.env.SMTP_PASS,
-          }
-        : undefined,
-      tls: host && host.match(/^\d+\.\d+\.\d+\.\d+$/) ? { servername: 'smtp.gmail.com' } : undefined,
-    });
-  }
-  const account = await nodemailer.createTestAccount();
-  return nodemailer.createTransport({
-    host: account.smtp.host,
-    port: account.smtp.port,
-    secure: account.smtp.secure,
-    auth: { user: account.user, pass: account.pass },
-  });
-}
 
 async function createAndSend(req, res) {
   const { organizationId, id: userId } = req.user;
@@ -55,9 +27,7 @@ async function createAndSend(req, res) {
   const formUrl = `${FRONTEND_BASE}/client/project-request/${request.token}`;
 
   try {
-    const transporter = await getTransporter();
-    const info = await transporter.sendMail({
-      from: process.env.SMTP_FROM || '"Work Mesh" <noreply@workmesh.com>',
+    const { previewUrl } = await sendEmail({
       to: request.clientEmail,
       subject: `Submit your project requirements - ${companyName}`,
       html: `
@@ -119,11 +89,6 @@ async function createAndSend(req, res) {
       `,
       text: `Hello${request.clientName ? ` ${request.clientName}` : ''},\n\n${companyName} has invited you to submit your project requirements.\n\nOpen this link to fill out the form:\n${formUrl}\n\nThis link is unique and can only be used once.\n\n— Work Mesh`,
     });
-
-    let previewUrl = null;
-    try {
-      if (nodemailer.getTestMessageUrl) previewUrl = nodemailer.getTestMessageUrl(info);
-    } catch (_) {}
     return ok(
       res,
       {

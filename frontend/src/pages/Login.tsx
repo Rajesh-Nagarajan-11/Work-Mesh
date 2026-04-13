@@ -211,12 +211,7 @@ export const Login: React.FC = () => {
                                 <span className="text-sm text-secondary-700">Remember me</span>
                             </label>
 
-                            <a
-                                href="#"
-                                className="text-sm font-medium text-primary hover:text-primary-700 transition-colors"
-                            >
-                                Forgot password?
-                            </a>
+                           
                         </div>
 
                         <Button type="submit" variant="primary" size="lg" isLoading={isLoading} className="w-full">

@@ -55,8 +55,6 @@ async function getAnalytics(req, res) {
     EmployeeSkill.aggregate([
       { $match: { emp_id: { $in: empIds } } },
       { $group: { _id: "$skill_id", count: { $sum: 1 } } },
-      { $sort: { count: -1 } },
-      { $limit: 8 },
       {
         $lookup: {
           from: "skills",
@@ -66,6 +64,15 @@ async function getAnalytics(req, res) {
         },
       },
       { $unwind: { path: "$skill", preserveNullAndEmptyArrays: true } },
+      {
+        $match: {
+          "skill.skill_name": {
+            $not: /(Designer|Tester|Developer|Engineer|Manager|Lead|Architect|Design|Testing)$/i,
+          },
+        },
+      },
+      { $sort: { count: -1 } },
+      { $limit: 8 },
     ]),
   ]);
 

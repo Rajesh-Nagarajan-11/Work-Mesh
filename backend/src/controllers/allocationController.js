@@ -1,7 +1,20 @@
 const Allocation = require('../models/Allocation');
 const Employee = require('../models/Employee');
 const Project = require('../models/Project');
+const Organization = require('../models/Organization');
 const { ok, fail } = require('../utils/apiResponse');
+const { sendEmail } = require('../utils/mailer');
+
+function formatDateForEmail(value) {
+    if (!value) return 'Not specified';
+    const d = new Date(value);
+    if (Number.isNaN(d.getTime())) return 'Not specified';
+    return d.toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'short',
+        day: '2-digit',
+    });
+}
 
 /**
  * GET /api/allocations - Get all allocations in the org
@@ -103,6 +116,81 @@ async function create(req, res) {
         { path: 'emp_id', select: 'name email role department' },
         { path: 'project_id', select: 'name status priority deadline' },
     ]);
+
+    if (emp.email) {
+        try {
+            const org = await Organization.findById(organizationId).select('companyName');
+            const companyName = org?.companyName || 'Work Mesh';
+            const startDate = formatDateForEmail(allocation_start_date);
+            const endDate = allocation_end_date ? formatDateForEmail(allocation_end_date) : 'Open-ended';
+            const allocationPct = allocation_percentage ?? 100;
+            const projectName = project.name || 'your assigned project';
+
+            await sendEmail({
+                to: emp.email,
+                subject: `You have been selected for the team: ${projectName}`,
+                html: `
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Team Selection - ${companyName}</title>
+</head>
+<body style="margin:0; padding:0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; background-color: #f1f5f9; line-height: 1.5;">
+  <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background-color: #f1f5f9;">
+    <tr>
+      <td align="center" style="padding: 32px 16px;">
+        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width: 560px; background-color: #ffffff; border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); overflow: hidden;">
+          <tr>
+            <td style="background: linear-gradient(135deg, #0f766e 0%, #14b8a6 100%); padding: 28px 24px; text-align: center;">
+              <h1 style="margin: 0; font-size: 22px; font-weight: 700; color: #ffffff; letter-spacing: -0.02em;">You are selected</h1>
+              <p style="margin: 6px 0 0 0; font-size: 14px; color: rgba(255,255,255,0.92);">Project team assignment notice</p>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding: 28px 24px;">
+              <p style="margin: 0 0 16px 0; font-size: 16px; color: #334155;">Hello ${emp.name},</p>
+              <p style="margin: 0 0 20px 0; font-size: 15px; color: #64748b;">You have been selected for the project team in ${companyName}. Here are your assignment details:</p>
+              <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin: 0 0 20px 0; border: 1px solid #e2e8f0; border-radius: 8px;">
+                <tr>
+                  <td style="padding: 10px 12px; font-size: 13px; color: #64748b; border-bottom: 1px solid #e2e8f0;">Project</td>
+                  <td style="padding: 10px 12px; font-size: 14px; color: #0f172a; font-weight: 600; border-bottom: 1px solid #e2e8f0;">${projectName}</td>
+                </tr>
+                <tr>
+                  <td style="padding: 10px 12px; font-size: 13px; color: #64748b; border-bottom: 1px solid #e2e8f0;">Allocation</td>
+                  <td style="padding: 10px 12px; font-size: 14px; color: #0f172a; font-weight: 600; border-bottom: 1px solid #e2e8f0;">${allocationPct}%</td>
+                </tr>
+                <tr>
+                  <td style="padding: 10px 12px; font-size: 13px; color: #64748b; border-bottom: 1px solid #e2e8f0;">Start date</td>
+                  <td style="padding: 10px 12px; font-size: 14px; color: #0f172a; font-weight: 600; border-bottom: 1px solid #e2e8f0;">${startDate}</td>
+                </tr>
+                <tr>
+                  <td style="padding: 10px 12px; font-size: 13px; color: #64748b;">End date</td>
+                  <td style="padding: 10px 12px; font-size: 14px; color: #0f172a; font-weight: 600;">${endDate}</td>
+                </tr>
+              </table>
+              <p style="margin: 0; font-size: 13px; color: #64748b;">Please contact your project manager if you have any scheduling concerns.</p>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding: 16px 24px; background-color: #f8fafc; border-top: 1px solid #e2e8f0; text-align: center;">
+              <p style="margin: 0; font-size: 12px; color: #94a3b8;">— Work Mesh</p>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>
+                `,
+                text: `Hello ${emp.name},\n\nYou have been selected for the project team in ${companyName}.\n\nProject: ${projectName}\nAllocation: ${allocationPct}%\nStart date: ${startDate}\nEnd date: ${endDate}\n\nPlease contact your project manager if you have any scheduling concerns.\n\n— Work Mesh`,
+            });
+        } catch (emailErr) {
+            console.error(`[allocationController] Team selection email failed for employee ${emp._id}:`, emailErr.message);
+        }
+    }
 
     return ok(res, allocation, 'Allocation created');
 }
