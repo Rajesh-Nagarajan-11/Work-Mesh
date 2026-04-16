@@ -45,6 +45,9 @@ export interface EmployeeAvailability {
 export interface Project {
     id: string;
     name: string;
+    client_name?: string | null;
+    client_email?: string | null;
+    domain?: string | null;
     description: string;
     duration: number; // In months
     priority: 'Low' | 'Medium' | 'High';
@@ -315,6 +318,9 @@ export interface EmployeeFormData {
 
 export interface ProjectFormData {
     name: string;
+    client_name?: string;
+    client_email?: string;
+    domain?: string;
     description: string;
     duration: number;
     priority: 'Low' | 'Medium' | 'High';

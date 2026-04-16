@@ -14,6 +14,8 @@ export const ClientProjectRequest: React.FC = () => {
 
     const [form, setForm] = useState({
         name: '',
+        clientName: '',
+        domain: '',
         description: '',
         deadline: '',
     });
@@ -30,6 +32,7 @@ export const ClientProjectRequest: React.FC = () => {
             .getForm(token)
             .then((data) => {
                 setClientEmail(data.clientEmail);
+                setForm((prev) => ({ ...prev, clientName: data.clientName || '' }));
                 setStatus('form');
             })
             .catch((err) => {
@@ -57,6 +60,8 @@ export const ClientProjectRequest: React.FC = () => {
         try {
             await projectRequestService.submitForm(token, {
                 name: form.name.trim(),
+                clientName: form.clientName.trim() || undefined,
+                domain: form.domain.trim() || undefined,
                 description: form.description.trim() || undefined,
                 deadline: form.deadline,
                 requiredSkills: skills
@@ -131,6 +136,20 @@ export const ClientProjectRequest: React.FC = () => {
                                 value={form.name}
                                 onChange={(e) => setForm((p) => ({ ...p, name: e.target.value }))}
                                 required
+                                className="min-h-[2.5rem]"
+                            />
+                            <Input
+                                label="Client Name"
+                                placeholder="e.g., Acme Corp"
+                                value={form.clientName}
+                                onChange={(e) => setForm((p) => ({ ...p, clientName: e.target.value }))}
+                                className="min-h-[2.5rem]"
+                            />
+                            <Input
+                                label="Domain"
+                                placeholder="e.g., Healthcare, Fintech"
+                                value={form.domain}
+                                onChange={(e) => setForm((p) => ({ ...p, domain: e.target.value }))}
                                 className="min-h-[2.5rem]"
                             />
                             <Input

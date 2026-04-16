@@ -13,6 +13,7 @@ const ProjectRequestSchema = new mongoose.Schema(
     clientEmail: { type: String, required: true },
     clientName: { type: String, default: '' },
     status: { type: String, enum: ['sent', 'submitted'], default: 'sent' },
+    expiresAt: { type: Date, default: () => new Date(Date.now() + 1000 * 60 * 60 * 24 * 7) },
     projectId: { type: mongoose.Schema.Types.ObjectId, ref: 'Project', default: null },
     createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'Employee' },
   },

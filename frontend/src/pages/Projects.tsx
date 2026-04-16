@@ -9,7 +9,8 @@ import { LoadingSpinner } from '../components/ui/LoadingSpinner';
 import { Modal } from '../components/ui/Modal';
 import { useToast } from '../components/ui/Toast';
 import { SKILL_OPTIONS } from '../constants/skills';
-import type { Project } from '../types';
+import type { Allocation, Employee, Project } from '../types';
+import { allocationService } from '../services/allocationService';
 import { projectService } from '../services/projectService';
 
 type ProjectStatus = Project['status'];
@@ -79,6 +80,9 @@ export const Projects: React.FC = () => {
     const [isCreateOpen, setIsCreateOpen] = useState(false);
     const [createForm, setCreateForm] = useState({
         name: '',
+        clientName: '',
+        clientEmail: '',
+        domain: '',
         description: '',
         priority: '' as ProjectPriority | '',
         status: '' as ProjectStatus | '',
@@ -91,6 +95,9 @@ export const Projects: React.FC = () => {
     const [editingProject, setEditingProject] = useState<Project | null>(null);
     const [editForm, setEditForm] = useState({
         name: '',
+        clientName: '',
+        clientEmail: '',
+        domain: '',
         description: '',
         priority: 'Medium' as ProjectPriority,
         status: 'Draft' as ProjectStatus,
@@ -101,6 +108,10 @@ export const Projects: React.FC = () => {
     });
     const [editSkills, setEditSkills] = useState<CreateSkillInput[]>([]);
     const [isSavingEdit, setIsSavingEdit] = useState(false);
+    const [completionFeedbackScore, setCompletionFeedbackScore] = useState('');
+    const [completionAssignees, setCompletionAssignees] = useState<Allocation[]>([]);
+    const [isLoadingCompletionAssignees, setIsLoadingCompletionAssignees] = useState(false);
+    const [completionFeedbackByEmployee, setCompletionFeedbackByEmployee] = useState<Record<string, string>>({});
 
     const [isSendFormOpen, setIsSendFormOpen] = useState(false);
     const [sendFormEmail, setSendFormEmail] = useState('');
@@ -182,6 +193,9 @@ export const Projects: React.FC = () => {
     const resetCreateForm = () => {
         setCreateForm({
             name: '',
+            clientName: '',
+            clientEmail: '',
+            domain: '',
             description: '',
             priority: '',
             status: '',
@@ -220,8 +234,14 @@ export const Projects: React.FC = () => {
 
     const openEdit = (p: Project) => {
         setEditingProject(p);
+        setCompletionFeedbackScore('');
+        setCompletionAssignees([]);
+        setCompletionFeedbackByEmployee({});
         setEditForm({
             name: p.name,
+            clientName: p.client_name || '',
+            clientEmail: p.client_email || '',
+            domain: p.domain || '',
             description: p.description || '',
             priority: p.priority,
             status: p.status,
@@ -243,7 +263,40 @@ export const Projects: React.FC = () => {
     const closeEdit = () => {
         setEditingProject(null);
         setIsSavingEdit(false);
+        setCompletionFeedbackScore('');
+        setCompletionAssignees([]);
+        setCompletionFeedbackByEmployee({});
     };
+
+    useEffect(() => {
+        const shouldLoadAssignees = !!editingProject && editingProject.status !== 'Completed' && editForm.status === 'Completed';
+        if (!shouldLoadAssignees) {
+            setCompletionAssignees([]);
+            setCompletionFeedbackByEmployee({});
+            return;
+        }
+
+        const loadAssignees = async () => {
+            if (!editingProject) return;
+            setIsLoadingCompletionAssignees(true);
+            try {
+                const allocations = await allocationService.getByProject(editingProject.id);
+                setCompletionAssignees(allocations);
+                const nextScores: Record<string, string> = {};
+                allocations.forEach((alloc) => {
+                    const empId = typeof alloc.emp_id === 'string' ? alloc.emp_id : alloc.emp_id.id;
+                    if (empId) nextScores[empId] = '';
+                });
+                setCompletionFeedbackByEmployee(nextScores);
+            } catch (err) {
+                addToast('error', 'Failed to load project assignees for feedback');
+            } finally {
+                setIsLoadingCompletionAssignees(false);
+            }
+        };
+
+        loadAssignees();
+    }, [editingProject, editForm.status, addToast]);
 
     const addEditSkill = () => {
         setEditSkills((prev) => [
@@ -268,6 +321,41 @@ export const Projects: React.FC = () => {
         if (!editingProject) return;
         const name = editForm.name.trim();
         if (!name) return;
+        if (editForm.clientEmail.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(editForm.clientEmail.trim())) {
+            addToast('error', 'Please enter a valid client email');
+            return;
+        }
+        const isCompleting = editingProject.status !== 'Completed' && editForm.status === 'Completed';
+
+        let defaultCompletionFeedback: number | undefined;
+        let byEmployeeFeedback: Record<string, number> = {};
+        if (isCompleting) {
+            const parsed = Number(completionFeedbackScore);
+            if (!Number.isFinite(parsed) || parsed < 1 || parsed > 10) {
+                addToast('error', 'Feedback score is required (1 to 10) when completing a project');
+                return;
+            }
+            defaultCompletionFeedback = Math.round(parsed);
+
+            const missing = completionAssignees.find((alloc) => {
+                const empId = typeof alloc.emp_id === 'string' ? alloc.emp_id : alloc.emp_id.id;
+                if (!empId) return true;
+                const score = Number(completionFeedbackByEmployee[empId]);
+                return !Number.isFinite(score) || score < 1 || score > 10;
+            });
+
+            if (missing) {
+                addToast('error', 'Please provide feedback score (1-10) for each allocated employee');
+                return;
+            }
+
+            byEmployeeFeedback = completionAssignees.reduce((acc, alloc) => {
+                const empId = typeof alloc.emp_id === 'string' ? alloc.emp_id : alloc.emp_id.id;
+                if (!empId) return acc;
+                acc[empId] = Math.round(Number(completionFeedbackByEmployee[empId]));
+                return acc;
+            }, {} as Record<string, number>);
+        }
 
         const deadline =
             editForm.deadline && !Number.isNaN(new Date(editForm.deadline).getTime())
@@ -278,6 +366,9 @@ export const Projects: React.FC = () => {
         try {
             const updated = await projectService.updateProject(editingProject.id, {
                 name,
+                client_name: editForm.clientName.trim() || undefined,
+                client_email: editForm.clientEmail.trim() || undefined,
+                domain: editForm.domain.trim() || undefined,
                 description: editForm.description.trim() || '—',
                 duration: Math.max(1, Number(editForm.duration) || 1),
                 priority: editForm.priority,
@@ -297,6 +388,10 @@ export const Projects: React.FC = () => {
                     teamSize: Math.max(1, Number(editForm.teamSize) || 1),
                     seniorityMix: editingProject.teamPreferences?.seniorityMix ?? { junior: 40, mid: 40, senior: 20 },
                 },
+                completionFeedback:
+                    isCompleting && defaultCompletionFeedback !== undefined
+                        ? { defaultScore: defaultCompletionFeedback, byEmployee: byEmployeeFeedback }
+                        : undefined,
             } as any);
             setProjects((prev) => prev.map((proj) => (proj.id === editingProject.id ? updated : proj)));
             addToast('success', 'Project updated');
@@ -312,6 +407,10 @@ export const Projects: React.FC = () => {
         const name = createForm.name.trim();
         const description = createForm.description.trim();
         if (!name) return;
+        if (createForm.clientEmail.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(createForm.clientEmail.trim())) {
+            addToast('error', 'Please enter a valid client email');
+            return;
+        }
 
         const deadline =
             createForm.deadline && !Number.isNaN(new Date(createForm.deadline).getTime())
@@ -321,6 +420,9 @@ export const Projects: React.FC = () => {
         try {
             const created = await projectService.createProject({
                 name,
+                client_name: createForm.clientName.trim() || undefined,
+                client_email: createForm.clientEmail.trim() || undefined,
+                domain: createForm.domain.trim() || undefined,
                 description: description || '—',
                 duration: Math.max(1, Number(createForm.duration) || 1),
                 priority: createForm.priority,
@@ -756,6 +858,25 @@ export const Projects: React.FC = () => {
                             onChange={(e) => setCreateForm((p) => ({ ...p, name: e.target.value }))}
                         />
                         <Input
+                            label="Client Name"
+                            placeholder="e.g., Acme Corp"
+                            value={createForm.clientName}
+                            onChange={(e) => setCreateForm((p) => ({ ...p, clientName: e.target.value }))}
+                        />
+                        <Input
+                            label="Client Email"
+                            type="email"
+                            placeholder="e.g., client@company.com"
+                            value={createForm.clientEmail}
+                            onChange={(e) => setCreateForm((p) => ({ ...p, clientEmail: e.target.value }))}
+                        />
+                        <Input
+                            label="Domain"
+                            placeholder="e.g., Healthcare, Fintech"
+                            value={createForm.domain}
+                            onChange={(e) => setCreateForm((p) => ({ ...p, domain: e.target.value }))}
+                        />
+                        <Input
                             label="Deadline"
                             type="date"
                             leftIcon={<Calendar className="w-5 h-5" />}
@@ -980,6 +1101,25 @@ export const Projects: React.FC = () => {
                             onChange={(e) => setEditForm((prev) => ({ ...prev, name: e.target.value }))}
                         />
                         <Input
+                            label="Client Name"
+                            placeholder="e.g., Acme Corp"
+                            value={editForm.clientName}
+                            onChange={(e) => setEditForm((prev) => ({ ...prev, clientName: e.target.value }))}
+                        />
+                        <Input
+                            label="Client Email"
+                            type="email"
+                            placeholder="e.g., client@company.com"
+                            value={editForm.clientEmail}
+                            onChange={(e) => setEditForm((prev) => ({ ...prev, clientEmail: e.target.value }))}
+                        />
+                        <Input
+                            label="Domain"
+                            placeholder="e.g., Healthcare, Fintech"
+                            value={editForm.domain}
+                            onChange={(e) => setEditForm((prev) => ({ ...prev, domain: e.target.value }))}
+                        />
+                        <Input
                             label="Deadline"
                             type="date"
                             leftIcon={<Calendar className="w-5 h-5" />}
@@ -1012,6 +1152,50 @@ export const Projects: React.FC = () => {
                                 ))}
                             </select>
                         </div>
+                        {editingProject?.status !== 'Completed' && editForm.status === 'Completed' && (
+                            <div className="md:col-span-2 space-y-3 border border-border dark:border-slate-700 rounded-md p-3">
+                                <Input
+                                    label="Default Team Feedback Score (1-10) *"
+                                    type="number"
+                                    min={1}
+                                    max={10}
+                                    value={completionFeedbackScore}
+                                    onChange={(e) => setCompletionFeedbackScore(e.target.value)}
+                                />
+                                <p className="text-xs text-secondary-600 dark:text-secondary-400">
+                                    Enter feedback for each allocated employee before completing this project.
+                                </p>
+                                {isLoadingCompletionAssignees ? (
+                                    <p className="text-sm text-secondary-600 dark:text-secondary-300">Loading allocated employees...</p>
+                                ) : completionAssignees.length === 0 ? (
+                                    <p className="text-sm text-secondary-600 dark:text-secondary-300">No active allocations found for this project.</p>
+                                ) : (
+                                    <div className="space-y-2">
+                                        {completionAssignees.map((alloc) => {
+                                            const employee = typeof alloc.emp_id === 'string' ? null : (alloc.emp_id as Employee);
+                                            const empId = typeof alloc.emp_id === 'string' ? alloc.emp_id : alloc.emp_id.id;
+                                            const empName = employee?.name || 'Employee';
+                                            return (
+                                                <div key={alloc.id} className="grid grid-cols-1 md:grid-cols-3 gap-3 items-end border border-border dark:border-slate-700 rounded-md p-2">
+                                                    <div className="md:col-span-2">
+                                                        <p className="text-sm font-medium text-secondary-900 dark:text-white">{empName}</p>
+                                                        <p className="text-xs text-secondary-600 dark:text-secondary-400">Allocation: {alloc.allocation_percentage}%</p>
+                                                    </div>
+                                                    <Input
+                                                        label="Feedback (1-10)"
+                                                        type="number"
+                                                        min={1}
+                                                        max={10}
+                                                        value={completionFeedbackByEmployee[empId] || ''}
+                                                        onChange={(e) => setCompletionFeedbackByEmployee((prev) => ({ ...prev, [empId]: e.target.value }))}
+                                                    />
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                )}
+                            </div>
+                        )}
                         {editForm.status === 'Active' && (
                             <div className="md:col-span-2">
                                 <div className="flex justify-between items-center mb-1">

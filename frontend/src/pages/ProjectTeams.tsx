@@ -434,7 +434,6 @@ export const ProjectTeams: React.FC = () => {
   const [loadingStep, setLoadingStep] = useState(0);
   const [loadingProgress, setLoadingProgress] = useState(0);
   const [showAll, setShowAll] = useState(false);
-  const [excludeUnavailable, setExcludeUnavailable] = useState(false);
   const loadingTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   // Add allocation modal
@@ -503,7 +502,7 @@ export const ProjectTeams: React.FC = () => {
     try {
       // Run API + minimum timer in parallel — wait for BOTH to finish
       const [result] = await Promise.all([
-        projectService.recommendTeam(id, excludeUnavailable),
+        projectService.recommendTeam(id, true),
         new Promise<void>((r) => setTimeout(r, MIN_DISPLAY_MS)),
       ]);
       // Complete animation
@@ -710,15 +709,6 @@ export const ProjectTeams: React.FC = () => {
               </div>
             </div>
             <div className="flex items-center gap-3">
-              <label className="flex items-center gap-2 text-sm text-secondary-600 dark:text-secondary-400 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={excludeUnavailable}
-                  onChange={(e) => setExcludeUnavailable(e.target.checked)}
-                  className="rounded border-border"
-                />
-                Hide unavailable
-              </label>
               <Button
                 onClick={handleGetRecommendation}
                 isLoading={isRecommending}

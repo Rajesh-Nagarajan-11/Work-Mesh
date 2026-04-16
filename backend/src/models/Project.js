@@ -35,6 +35,7 @@ const ProjectSchema = new mongoose.Schema(
     project_name: { type: String, trim: true, default: null }, // ER field alias
     name: { type: String, required: true, trim: true }, // kept for compatibility
     client_name: { type: String, default: null, trim: true },
+    client_email: { type: String, default: null, trim: true, lowercase: true },
     domain: { type: String, default: null, trim: true },
     description: { type: String, default: '' },
     start_date: { type: Date, default: null },

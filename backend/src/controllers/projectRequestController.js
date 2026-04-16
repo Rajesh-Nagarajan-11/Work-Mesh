@@ -17,12 +17,27 @@ async function createAndSend(req, res) {
   const org = await Organization.findById(organizationId);
   const companyName = org?.companyName || 'Work Mesh';
 
-  const request = await ProjectRequest.createWithToken({
+  const normalizedEmail = String(clientEmail).toLowerCase().trim();
+  const normalizedName = clientName ? String(clientName).trim() : '';
+
+  let request = await ProjectRequest.findOne({
     organizationId,
-    clientEmail: String(clientEmail).toLowerCase().trim(),
-    clientName: clientName ? String(clientName).trim() : '',
-    createdBy: userId,
-  });
+    clientEmail: normalizedEmail,
+    status: 'sent',
+    expiresAt: { $gt: new Date() },
+  }).sort({ createdAt: -1 });
+
+  if (!request) {
+    request = await ProjectRequest.createWithToken({
+      organizationId,
+      clientEmail: normalizedEmail,
+      clientName: normalizedName,
+      createdBy: userId,
+    });
+  } else if (normalizedName && request.clientName !== normalizedName) {
+    request.clientName = normalizedName;
+    await request.save();
+  }
 
   const formUrl = `${FRONTEND_BASE}/client/project-request/${request.token}`;
 
@@ -118,6 +133,7 @@ async function getByToken(req, res) {
   const { token } = req.params;
   const request = await ProjectRequest.findOne({ token });
   if (!request) return fail(res, 404, 'Invalid or expired link');
+  if (request.expiresAt && request.expiresAt <= new Date()) return fail(res, 400, 'This form link has expired');
   if (request.status === 'submitted') return fail(res, 400, 'This form has already been submitted');
   return ok(res, { token: request.token, clientEmail: request.clientEmail, clientName: request.clientName }, 'OK');
 }
@@ -128,9 +144,10 @@ async function submitByToken(req, res) {
 
   const request = await ProjectRequest.findOne({ token });
   if (!request) return fail(res, 404, 'Invalid or expired link');
+  if (request.expiresAt && request.expiresAt <= new Date()) return fail(res, 400, 'This form link has expired');
   if (request.status === 'submitted') return fail(res, 400, 'This form has already been submitted');
 
-  const { name, description, deadline, duration, priority, teamSize, requiredSkills } = body;
+  const { name, description, deadline, duration, priority, teamSize, requiredSkills, clientName, domain } = body;
 
   if (!name || !deadline) {
     return fail(res, 400, 'Project name and deadline are required');
@@ -156,6 +173,10 @@ async function submitByToken(req, res) {
   const project = await Project.create({
     organizationId: request.organizationId,
     name: String(name).trim(),
+    project_name: String(name).trim(),
+    client_name: clientName ? String(clientName).trim() : request.clientName || null,
+    client_email: request.clientEmail,
+    domain: domain ? String(domain).trim() : null,
     description: description ? String(description).trim() : '',
     status: 'Draft',
     priority: priority || 'Medium',

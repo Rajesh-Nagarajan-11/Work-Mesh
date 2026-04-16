@@ -21,6 +21,8 @@ export const projectRequestService = {
         token: string,
         data: {
             name: string;
+            clientName?: string;
+            domain?: string;
             description?: string;
             deadline: string;
             duration?: number;
